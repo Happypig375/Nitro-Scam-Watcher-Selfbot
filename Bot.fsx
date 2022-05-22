@@ -3,7 +3,7 @@
 #r "nuget: Newtonsoft.Json, 13.0.1"
 #r "nuget: System.Drawing.Common, 7.0.0-preview.2.22152.2"
 #r "nuget: websocketsharp.core, 1.0.0"
-#r @"C:\Users\hadri\Source\Repos\Anarchy\Anarchy\bin\Debug\net6.0\Anarchy.dll"
+#r "Anarchy.dll" // Custom built from https://github.com/not-ilinked/Anarchy/pull/3302
 open Discord
 open Discord.Gateway
 let env = System.Environment.GetEnvironmentVariable
