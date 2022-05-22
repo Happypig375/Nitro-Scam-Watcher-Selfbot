@@ -1,0 +1,19 @@
+name: Run
+on:
+  schedule:
+    - cron:  '0,30 * * * *'
+jobs:
+  bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛎️ Checkout
+        uses: actions/checkout@v2.4.0
+      - name: 📥 Install
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '6.0.x'
+      - name: 🏃 Run
+        env:
+          BOT_LOGIN_TOKEN: ${{ secrets.BOT_LOGIN_TOKEN }}
+        run: dotnet fsi Bot.fsx
+      - uses: gautamkrishnar/keepalive-workflow@master # prevent GitHub from suspending this action due to repository inactivity
