@@ -14,6 +14,11 @@ jobs:
           dotnet-version: '6.0.x'
       - name: 🏃 Run
         env:
-          BOT_LOGIN_TOKEN: ${{ secrets.BOT_LOGIN_TOKEN }}
+          COMMAND_CHANNEL_ID: ${{ secrets.COMMAND_CHANNEL_ID }}
+          COMMAND_GUILD_ID: ${{ secrets.COMMAND_GUILD_ID }}
+          LOG_CHANNEL_ID: ${{ secrets.LOG_CHANNEL_ID }}
+          TOKEN: ${{ secrets.TOKEN }}
+          WEBHOOK1: ${{ secrets.WEBHOOK1 }}
+          WEBHOOK2: ${{ secrets.WEBHOOK2 }}
         run: dotnet fsi Bot.fsx
       - uses: gautamkrishnar/keepalive-workflow@master # prevent GitHub from suspending this action due to repository inactivity
