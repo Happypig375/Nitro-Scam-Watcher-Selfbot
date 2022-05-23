@@ -1,4 +1,3 @@
-
 let env = System.Environment.GetEnvironmentVariable
 let token = env "TOKEN" // https://discordhelp.net/discord-token
 let commandGuildId = uint64 (env "COMMAND_GUILD_ID")
