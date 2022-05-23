@@ -21,17 +21,18 @@ let whitelistedGuildId = uint64 (env "WHITELISTED_GUILD_ID")
     )
     let loggedInMsg = "Logged in"
     let http = new System.Net.Http.HttpClient()
-    let send obj = // https://birdie0.github.io/discord-webhooks-guide
+    let send omitSecondWebhook obj = // https://birdie0.github.io/discord-webhooks-guide
         task {
             let json = System.Net.Http.Json.JsonContent.Create obj
             let! _ = http.PostAsync(env "WEBHOOK1", json)
-            let! _ = http.PostAsync(env "WEBHOOK2", json)
-            ()
+            if not omitSecondWebhook then
+                let! _ = http.PostAsync(env "WEBHOOK2", json)
+                ()
         }
-    let log, error =
-        let log (color: int) (message: string) =
+    let logLoggedIn, log, error =
+        let log omitSecondWebhook (color: int) (message: string) =
             printfn $"{message}"
-            send {|
+            send omitSecondWebhook {|
                 embeds = [
                     {|
                         color = color
@@ -39,7 +40,8 @@ let whitelistedGuildId = uint64 (env "WHITELISTED_GUILD_ID")
                     |}
                 ]
             |}
-        log 1127128, log 16711680
+        (fun () -> log true 1127128 loggedInMsg), log false 1127128, log false 16711680
+    let send obj = send false obj
     try
         let client = new DiscordSocketClient()
         client.Login token
@@ -151,7 +153,7 @@ let whitelistedGuildId = uint64 (env "WHITELISTED_GUILD_ID")
             } |> ignore
         client.add_OnMessageReceived handler
         client.add_OnMessageEdited handler
-        do! log loggedInMsg
+        do! logLoggedIn()
         do! completion.Task
     with e -> do! error (string e)
 }).Wait()
