@@ -24,9 +24,9 @@ let whitelistedGuildId = uint64 (env "WHITELISTED_GUILD_ID")
     let send omitSecondWebhook obj = // https://birdie0.github.io/discord-webhooks-guide
         task {
             let json = System.Net.Http.Json.JsonContent.Create obj
-            let! _ = http.PostAsync(env "WEBHOOK1", json)
+            let! _ = http.PostAsync(env "WEBHOOK1", json) // A webhook in logChannelId
             if not omitSecondWebhook then
-                let! _ = http.PostAsync(env "WEBHOOK2", json)
+                let! _ = http.PostAsync(env "WEBHOOK2", json) // A webhook elsewhere
                 ()
         }
     let logLoggedIn, log, error =
