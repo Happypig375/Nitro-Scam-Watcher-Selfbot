@@ -1,3 +1,13 @@
+
+let env = System.Environment.GetEnvironmentVariable
+let token = env "TOKEN" // https://discordhelp.net/discord-token
+let commandGuildId = uint64 (env "COMMAND_GUILD_ID")
+let commandChannelId = uint64 (env "COMMAND_CHANNEL_ID") // A channel in commandGuildId
+let logChannelId = uint64 (env "LOG_CHANNEL_ID") // A channel in commandGuildId
+let whitelistedGuildId = uint64 (env "WHITELISTED_GUILD_ID")
+let webhook1 = env "WEBHOOK1" // A webhook in logChannelId
+let webhook2 = env "WEBHOOK2" // A webhook elsewhere
+
 #r "nuget: System.Threading.RateLimiting, 7.0.0-preview.4.22229.4"
 #r "nuget: Leaf.xNet, 5.2.10"
 #r "nuget: Newtonsoft.Json, 13.0.1"
@@ -6,12 +16,6 @@
 #r "Anarchy.dll" // Custom built from https://github.com/not-ilinked/Anarchy/pull/3302
 open Discord
 open Discord.Gateway
-let env = System.Environment.GetEnvironmentVariable
-let token = env "TOKEN" // https://discordhelp.net/discord-token
-let commandGuildId = uint64 (env "COMMAND_GUILD_ID")
-let commandChannelId = uint64 (env "COMMAND_CHANNEL_ID") // channel in commandGuildId
-let logChannelId = uint64 (env "LOG_CHANNEL_ID") // channel in commandGuildId
-let whitelistedGuildId = uint64 (env "WHITELISTED_GUILD_ID")
 (task {
     let completion = System.Threading.Tasks.TaskCompletionSource()
     let limiter = new System.Threading.RateLimiting.FixedWindowRateLimiter(
@@ -24,9 +28,9 @@ let whitelistedGuildId = uint64 (env "WHITELISTED_GUILD_ID")
     let send omitSecondWebhook obj = // https://birdie0.github.io/discord-webhooks-guide
         task {
             let json = System.Net.Http.Json.JsonContent.Create obj
-            let! _ = http.PostAsync(env "WEBHOOK1", json) // A webhook in logChannelId
+            let! _ = http.PostAsync(webhook1, json)
             if not omitSecondWebhook then
-                let! _ = http.PostAsync(env "WEBHOOK2", json) // A webhook elsewhere
+                let! _ = http.PostAsync(webhook2, json)
                 ()
         }
     let logLoggedIn, log, error =
