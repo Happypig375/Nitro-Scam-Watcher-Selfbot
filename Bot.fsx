@@ -130,6 +130,7 @@ open Discord.Gateway
                                                 |}
                                             ] 
                                         |}
+                                do! log "Exported guilds successfully."
                             | _ -> do! args.Message.AddReactionAsync "❓"
                     else
                     let sender = args.Message.Author.User
