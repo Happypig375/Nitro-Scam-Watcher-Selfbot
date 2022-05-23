@@ -71,48 +71,65 @@ open Discord.Gateway
                             | "export" ->
                                 do! log "Exporting guilds..."
                                 let! guilds = client.GetGuildsAsync()
-                                for guild in guilds |> Seq.filter (fun g -> g.Id <> commandGuildId && g.Id <> whitelistedGuildId) do // |> Seq.take 1 do
+                                for guild in guilds do
+                                    let guildId = guild.Id // 953749061616414751UL
+                                    let! me = client.GetGuildMemberAsync(guildId, client.User.Id)
+                                    let! channels = client.GetGuildChannelsAsync guildId
+                                    let firstChannel = // The first channel visible to myself, this is not necessarily just channels[0] 
+                                        channels |> Seq.find (fun c ->
+                                            c.PermissionOverwrites
+                                            |> Seq.tryPick (fun p ->
+                                                if p.Type = PermissionOverwriteType.Member && p.AffectedId = me.User.Id
+                                                   || p.Type = PermissionOverwriteType.Role && (me.Roles |> Seq.exists (fun roleId -> roleId = p.AffectedId) || p.AffectedId = guildId (*@everyone*)) then
+                                                    if p.Allow.HasFlag DiscordPermission.ViewChannel then Some true
+                                                    elif p.Deny.HasFlag DiscordPermission.ViewChannel then Some false
+                                                    else None
+                                                else None
+                                            ) |> Option.defaultValue true
+                                        )
+                                    let! roles = client.GetGuildRolesAsync guildId
+                                    let rolesMap = roles |> Seq.map (fun role -> role.Id, role) |> Map
                                     let! guild = client.GetGuildAsync guild.Id
                                     let! owner = guild.GetMemberAsync guild.OwnerId
-                                    //let! channels = guild.GetChannelsAsync()
-                                    //let firstChannel = channels[0].Id
-                                    //let! roles = guild.GetRolesAsync()
-                                    //let roles = roles |> Seq.map (fun role -> role.Id, role) |> Map
-                                    //let getMaxRole (mem: GuildMember) = mem.Roles |> Seq.map (fun role -> roles[role]) |> Seq.maxBy (fun role -> role.Position)
-                                    //let! me = guild.GetMemberAsync client.User.Id
-                                    //let isNotMyRoleLevel = if me.Roles.Count > 0 then (<>) (getMaxRole me) else fun _ -> true
-                                    //do! log $"Getting guild members of {guild.Name} ({guild.Id})..."
-                                    //let! channelMembers = client.GetGuildChannelMembersAsync(guild.Id, firstChannel, 100u) // Not setting a limit takes too long to load
-                                    //do! log $"Got members of {guild.Name} ({guild.Id})..."
                                     let vanity = if isNull guild.VanityInvite then "" else $"\nVanity Invite: {guild.VanityInvite}"
                                     do! send {|
                                         username = guild.Name
                                         avatar_url = if isNull guild.Icon then null else guild.Icon.Url
                                         content = $"Guild ID: {guild.Id}\nGuild Owner: {owner} ({owner.User.Id}){vanity}"
-                                        //embeds = [{|
-                                        //    fields =
-                                        //        channelMembers
-                                        //        |> Seq.filter (fun mem ->
-                                        //            match mem.User.Type with
-                                        //            | DiscordUserType.User -> true // Get users with special roles
-                                        //            | DiscordUserType.Bot -> not (mem.User.Badges.HasFlag DiscordBadge.VerifiedBot) // Get unverified bots
-                                        //            | _ -> false
-                                        //            && mem.Roles.Count > 0
-                                        //        )
-                                        //        |> Seq.groupBy getMaxRole
-                                        //        |> Seq.filter (fst >> isNotMyRoleLevel)
-                                        //        |> Seq.sortByDescending (fun (role, _) -> role.Position)
-                                        //        |> Seq.map (fun (role, members) ->
-                                        //            {|
-                                        //                name = $"Role: {role.Name}"
-                                        //                value =
-                                        //                    members 
-                                        //                    |> Seq.map (fun mem -> $"""{mem.User} ({mem.User.Id}{if mem.User.Type = DiscordUserType.Bot then ", Unverified Bot" else ""})""")
-                                        //                    |> String.concat "\n"
-                                        //            |}
-                                        //        )
-                                        //|}]
                                     |}
+                                    let! members = client.GetGuildChannelMembersAsync(guildId, firstChannel.Id)
+                                    let memberRoles = Array.init members.Count (fun i -> members[i], Set members[i].Roles)
+                                    let myRoles = Set me.Roles
+                                    for role, members in
+                                        roles
+                                        |> Seq.filter (myRoles.Contains >> not) // No normal roles
+                                        |> Seq.map (fun r ->
+                                            r, memberRoles |> Array.filter (fun (mem, roles) ->
+                                                roles.Contains r &&
+                                                match mem.User.Type with
+                                                | DiscordUserType.User -> true // Get users with special roles
+                                                | DiscordUserType.Bot -> not (mem.User.Badges.HasFlag DiscordBadge.VerifiedBot) // Get unverified bots
+                                                | _ -> false)
+                                        ) // Get members with role
+                                        |> Seq.filter (fun (r, m) -> m.Length > 0) // Filter away roles with no members
+                                        |> Seq.sortByDescending (fun (r, _) -> r.Position) do // Order by importance
+                                        do! send {|
+                                            username = guild.Name
+                                            avatar_url = if isNull guild.Icon then null else guild.Icon.Url
+                                            embeds = [
+                                                {|
+                                                    color = role.Color.ToArgb()
+                                                    title = $"{role}"
+                                                    description =
+                                                        members
+                                                        |> Seq.map (fun (mem, _) -> $"""    {mem.User} ({mem.User.Id}{if mem.User.Type = DiscordUserType.Bot then ", Unverified Bot" else ""})""")
+                                                        |> String.concat "\n    "
+                                                    footer = {|
+                                                        text = $"Priority: {role.Position}, Displayed separately: {role.Seperated}"
+                                                    |}
+                                                |}
+                                            ] 
+                                        |}
                             | _ -> do! args.Message.AddReactionAsync "❓"
                     else
                     let sender = args.Message.Author.User
