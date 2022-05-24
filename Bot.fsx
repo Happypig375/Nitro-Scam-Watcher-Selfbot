@@ -19,7 +19,7 @@ open Discord.Gateway
     let completion = System.Threading.Tasks.TaskCompletionSource()
     let limiter = new System.Threading.RateLimiting.FixedWindowRateLimiter(
         System.Threading.RateLimiting.FixedWindowRateLimiterOptions(
-            2, enum 0, 0, System.TimeSpan.FromSeconds 1.
+            1, System.Threading.RateLimiting.QueueProcessingOrder.NewestFirst, 3, System.TimeSpan.FromSeconds 1.
         )
     )
     let loggedInMsg = "Logged in"
@@ -138,8 +138,9 @@ open Discord.Gateway
                     let contains: string -> _ = if isNull args.Message.Content then (fun _ -> true) else args.Message.Content.Contains
                     if (contains "discord" || contains ".com" || contains ".gg" || contains "http" || args.Message.Attachment <> null) // Detect invites and files
                         && not (contains "discord.gift/") // Don't spam claimed nitro links
-                        && not (contains "tenor.com/") // Don't spam gifs
-                        && limiter.Acquire(1).IsAcquired then // Rate limit to prevent spamming
+                        && not (contains "tenor.com/") then // Don't spam gifs
+                      use! lease = limiter.WaitAsync 1
+                      if lease.IsAcquired then // Rate limit to prevent spamming
                         let msg = {|
                             username = sender.Username
                             content = args.Message.Content
